@@ -1,0 +1,53 @@
+import { Type, Schema } from "@google/genai";
+import { GeminiProvider } from "../providers/gemini.provider";
+
+export interface RewriteGeneratorResult {
+  suggestedRewrite: string;
+  acceptanceProbability: number;
+  negotiationConfidence: number;
+}
+
+const RewriteGeneratorGeminiSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    suggestedRewrite: { 
+      type: Type.STRING,
+      description: "A balanced, realistic revision of the risky clause. Must be plain-english or clear legal language." 
+    },
+    acceptanceProbability: { 
+      type: Type.NUMBER, 
+      description: "Estimated probability (0-100) that the counterparty will accept this rewrite."
+    },
+    negotiationConfidence: {
+      type: Type.NUMBER,
+      description: "AI confidence score (0-100) in the suggested rewrite."
+    }
+  },
+  required: ["suggestedRewrite", "acceptanceProbability", "negotiationConfidence"]
+};
+
+export class RewriteGenerator {
+  static async generateRewrite(clauseContent: string, riskExplanation: string): Promise<{ result: RewriteGeneratorResult; tokensUsed: number }> {
+    const prompt = `
+Original Clause:
+${clauseContent}
+
+Identified Risk:
+${riskExplanation}
+
+Provide a balanced, realistic rewrite of this clause that mitigates the risk while remaining fair to both parties.
+`;
+    const systemInstruction = "You are an expert contract negotiation advisor. Suggest balanced, realistic revisions to risky contract clauses. Avoid extreme positions. Focus on fair risk sharing.";
+
+    const response = await GeminiProvider.generateStructuredResponse<RewriteGeneratorResult>(
+      prompt,
+      RewriteGeneratorGeminiSchema,
+      systemInstruction
+    );
+
+    return {
+      result: response.data,
+      tokensUsed: response.usage.totalTokens
+    };
+  }
+}
