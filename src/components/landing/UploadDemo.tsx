@@ -1,100 +1,148 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Upload, FileText, CheckCircle, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Upload, FileText, CheckCircle, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+
+const ANIMATION_STEPS = [
+  { text: "Uploading...", progress: 20 },
+  { text: "Analyzing...", progress: 50 },
+  { text: "Finding Risks...", progress: 75 },
+  { text: "Generating Summary...", progress: 90 },
+  { text: "Ready ✓", progress: 100 }
+];
 
 export function UploadDemo() {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setStep((s) => (s + 1) % 4);
-    }, 2500);
+      setStep((s) => (s + 1) % ANIMATION_STEPS.length);
+    }, 1500);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <section className="py-16 md:py-24 lg:py-32 relative overflow-hidden">
+    <section className="py-20 md:py-32 relative overflow-hidden bg-white border-t border-border/50 text-center">
       {/* Background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
       
-      <div className="container mx-auto px-6 max-w-5xl relative z-10 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
+      <div className="container mx-auto px-6 max-w-4xl relative z-10 flex flex-col items-center">
+        
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
+          className="text-4xl md:text-5xl lg:text-6xl font-heading font-semibold mb-6 leading-[1.1] max-w-3xl"
         >
-          <h2 className="text-4xl md:text-5xl font-heading font-semibold mb-6">
-            Ready to <span className="italic text-primary">understand</span> your next contract?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Drop a PDF below to see how ContractSense instantly extracts risks and plain-English summaries.
-          </p>
+          Stop signing contracts you don't <span className="italic text-primary">fully understand.</span>
+        </motion.h2>
+        
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.1 }}
+          className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl"
+        >
+          Upload a contract and receive an AI-powered legal review, plain-English explanations, safer alternatives, and an executive report—in minutes.
+        </motion.p>
+        
+        <motion.ul
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-wrap justify-center gap-x-6 gap-y-3 mb-12"
+        >
+          {[
+            "Contract Summary",
+            "Risk Detection",
+            "AI Contract Chat",
+            "Safer Alternatives",
+            "Version Comparison"
+          ].map((text, idx) => (
+            <li key={idx} className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <CheckCircle className="w-4 h-4 text-success" />
+              {text}
+            </li>
+          ))}
+        </motion.ul>
 
-          <div className="glass-panel max-w-3xl mx-auto rounded-3xl p-2 relative shadow-2xl">
-            <div className="border-2 border-dashed border-border/60 rounded-2xl p-12 bg-white/50 relative overflow-hidden min-h-[300px] flex flex-col items-center justify-center">
-              
-              {/* Animation States */}
-              {step === 0 && (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
-                    <Upload className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-medium">Drag & Drop your contract</h3>
-                  <p className="text-sm text-muted-foreground mt-2">PDF, DOCX, or plain text</p>
-                </motion.div>
-              )}
-
-              {step === 1 && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-secondary/5 flex items-center justify-center text-secondary mb-4 animate-pulse">
-                    <FileText className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-medium">Scanning 48 pages...</h3>
-                  <div className="w-48 h-2 bg-secondary/10 rounded-full mt-4 overflow-hidden">
-                    <motion.div 
-                      className="h-full bg-primary"
-                      initial={{ width: 0 }}
-                      animate={{ width: "100%" }}
-                      transition={{ duration: 2.5 }}
-                    />
-                  </div>
-                </motion.div>
-              )}
-
-              {step === 2 && (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center text-destructive mb-4">
-                    <div className="text-2xl font-bold">3</div>
-                  </div>
-                  <h3 className="text-lg font-medium text-destructive">Critical Risks Found</h3>
-                  <p className="text-sm text-muted-foreground mt-2">Unlimited liability, Missing IP assignment...</p>
-                </motion.div>
-              )}
-
-              {step === 3 && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center text-success mb-4">
-                    <CheckCircle className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-medium text-success">Analysis Complete</h3>
-                  <p className="text-sm text-muted-foreground mt-2">Summary and redlines generated in 4.2s</p>
-                </motion.div>
-              )}
-
-            </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3 }}
+          className="w-full max-w-2xl bg-white border border-border/50 rounded-3xl p-6 shadow-xl mb-12 relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-1 bg-secondary/10">
+            <motion.div 
+               className="h-full bg-primary"
+               initial={{ width: `${ANIMATION_STEPS[step === 0 ? 0 : step - 1].progress}%` }}
+               animate={{ width: `${ANIMATION_STEPS[step].progress}%` }}
+               transition={{ duration: 1.5, ease: "easeInOut" }}
+            />
           </div>
+          
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4">
+            
+            <div className="flex items-center gap-4 text-left">
+              <AnimatePresence mode="wait">
+                 <motion.div
+                    key={step}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.2 }}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${step === ANIMATION_STEPS.length - 1 ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary animate-pulse'}`}
+                 >
+                    {step === ANIMATION_STEPS.length - 1 ? <CheckCircle className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
+                 </motion.div>
+              </AnimatePresence>
+              <div>
+                 <div className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-1">Live AI Status</div>
+                 <AnimatePresence mode="wait">
+                    <motion.div
+                       key={step}
+                       initial={{ opacity: 0, y: 5 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -5 }}
+                       className={`font-semibold ${step === ANIMATION_STEPS.length - 1 ? 'text-success' : 'text-foreground'}`}
+                    >
+                       {ANIMATION_STEPS[step].text}
+                    </motion.div>
+                 </AnimatePresence>
+              </div>
+            </div>
 
-          <div className="mt-12 flex justify-center">
-             <Link href="/login" className="px-8 py-4 rounded-full bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 transition-all hover:bg-primary/90 gold-glow text-lg">
-                Start for free
-                <ArrowRight className="w-5 h-5" />
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <Link href="/login" className="w-full sm:w-auto px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/20">
+                Upload Contract
+                <Upload className="w-4 h-4" />
               </Link>
+              <Link href="/demo" className="w-full sm:w-auto px-6 py-3 rounded-xl bg-secondary/5 text-foreground font-semibold flex items-center justify-center gap-2 transition-all hover:bg-secondary/10 hover:scale-[1.02] active:scale-[0.98] border border-border/50">
+                Sample
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+            
           </div>
         </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
+          className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold text-muted-foreground uppercase tracking-widest"
+        >
+          <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-success" /> No credit card required</span>
+          <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" /> Free during Beta</span>
+          <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-foreground" /> Private & Encrypted</span>
+        </motion.div>
+
       </div>
     </section>
   );

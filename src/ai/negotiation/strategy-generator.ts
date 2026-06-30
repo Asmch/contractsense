@@ -1,5 +1,6 @@
 import { Type, Schema } from "@google/genai";
 import { GeminiProvider } from "../providers/gemini.provider";
+import { NEGOTIATION_SYSTEM_PROMPT } from "../prompts/contract-sense-ai-standard";
 
 export interface StrategyGeneratorResult {
   talkingPoints: string[];
@@ -15,12 +16,12 @@ const StrategyGeneratorGeminiSchema: Schema = {
     talkingPoints: { 
       type: Type.ARRAY, 
       items: { type: Type.STRING },
-      description: "Ready-to-use negotiation arguments for the user (e.g., 'Unlimited liability is uncommon'). Max 3." 
+      description: "Friendly, ready-to-use sentences the user can say to the other party to ask for a change. Use 'You' and 'Your'." 
     },
-    idealPosition: { type: Type.STRING, description: "The best realistic outcome the user could negotiate for." },
-    fallbackPosition: { type: Type.STRING, description: "A compromise position if the ideal is rejected." },
-    marketStandard: { type: Type.STRING, description: "Short phrase describing the industry standard (e.g., '30-day payment terms')." },
-    marketStandardReason: { type: Type.STRING, description: "Explanation of why this is the market standard." }
+    idealPosition: { type: Type.STRING, description: "The best realistic outcome you should ask for." },
+    fallbackPosition: { type: Type.STRING, description: "A compromise position if they say no." },
+    marketStandard: { type: Type.STRING, description: "Short phrase describing what is normal (e.g., '30-day payment terms')." },
+    marketStandardReason: { type: Type.STRING, description: "Simple explanation of why this is normal." }
   },
   required: ["talkingPoints", "idealPosition", "fallbackPosition", "marketStandard", "marketStandardReason"]
 };
@@ -37,7 +38,7 @@ ${riskExplanation}
 
 Generate a negotiation strategy including talking points, ideal position, fallback position, and market standard information.
 `;
-    const systemInstruction = "You are an expert contract negotiation advisor. Provide actionable, plain-language talking points and realistic negotiation positions for freelancers and founders.";
+    const systemInstruction = NEGOTIATION_SYSTEM_PROMPT;
 
     const response = await GeminiProvider.generateStructuredResponse<StrategyGeneratorResult>(
       prompt,

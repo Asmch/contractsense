@@ -11,18 +11,18 @@ export class ContractProcessingService {
    */
   static async processContract(contractId: string) {
     await connectToDatabase();
-    
+
     // Atomically lock the contract to prevent double execution, allowing RATE_LIMITED to resume
     let contract = await ContractModel.findOneAndUpdate(
-      { 
-        _id: contractId, 
-        status: { $in: ["UPLOADED", "FAILED", "RATE_LIMITED"] } 
+      {
+        _id: contractId,
+        status: { $in: ["UPLOADED", "FAILED", "RATE_LIMITED"] }
       },
-      { 
-        $set: { 
+      {
+        $set: {
           // We don't blindly set PARSING because it might be resuming from RATE_LIMITED
-          processingStartedAt: new Date() 
-        } 
+          processingStartedAt: new Date()
+        }
       },
       { returnDocument: 'after' }
     );
@@ -30,10 +30,10 @@ export class ContractProcessingService {
     if (!contract) {
       const existing = await ContractModel.findById(contractId);
       if (!existing) throw new Error("Contract not found");
-      
+
       if (["PARSING", "ANALYZING", "READY", "COMPLETE", "SEGMENTATION_REVIEW_REQUIRED"].includes(existing.status)) {
         console.log(`[Contract Processing] Contract ${contractId} is already in state ${existing.status}. Skipping duplicate execution.`);
-        return; 
+        return;
       }
       throw new Error(`Cannot process contract in status: ${existing.status}`);
     }
@@ -59,19 +59,19 @@ export class ContractProcessingService {
 
         // 1. Parse File
         const { text, pageCount, wordCount } = await DocumentParserService.parseFromUrl(contract.fileUrl);
-        
+
         contract.rawText = text;
         contract.pageCount = pageCount;
         contract.wordCount = wordCount;
         await log("EXTRACTING_TEXT", `Successfully extracted ${wordCount} words across ${pageCount} pages`);
-        
-        contract.status = "ANALYZING"; 
+
+        contract.status = "ANALYZING";
         await log("CLAUSE_DETECTION", "Starting clause detection heuristics");
         await contract.save();
 
         // 2. Detect Clauses
         const rawClauses = ClauseDetectorService.detectClauses(text, contractId);
-        
+
         // 3. Save Clauses
         await ContractClauseRepository.deleteByContract(contractId); // Clean up any previous retries
         await ContractClauseRepository.createMany(rawClauses);
@@ -95,7 +95,7 @@ export class ContractProcessingService {
       }
 
       // 4. Trigger AI Analysis
-      contract.status = "READY"; 
+      contract.status = "READY";
       await contract.save();
 
       // Run AI Job synchronously for now
@@ -105,14 +105,14 @@ export class ContractProcessingService {
     } catch (error: any) {
       // Refetch to avoid VersionError if anything else touched it, just to be safe
       contract = await ContractModel.findById(contractId) || contract;
-      
+
       // Don't overwrite RATE_LIMITED if the job just set it
       if (contract.status !== "RATE_LIMITED") {
         contract.status = "FAILED";
         await log("FAILED", error.message, "ERROR");
         await contract.save();
       }
-      
+
       throw error;
     }
   }

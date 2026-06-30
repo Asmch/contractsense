@@ -45,6 +45,32 @@ export interface IContract extends Document {
     whatToNegotiateSecond: string[];
     whatCanBeIgnored: string[];
   };
+  // Phase 6 Granular Risk Engine
+  missingClauses?: string[];
+  crossClauseConflicts?: string[];
+  riskEngine?: {
+    overallRisk: number;
+    legalRisk: number;
+    financialRisk: number;
+    operationalRisk: number;
+    complianceRisk: number;
+    privacyRisk: number;
+    employmentRisk: number;
+    intellectualPropertyRisk: number;
+  };
+  scoreExplanation?: Array<{
+    reason: string;
+    impact: number;
+    type: "BONUS" | "PENALTY";
+  }>;
+  // Phase 6.5 Sprint 13 Discoveries
+  discoveries?: Array<{
+    id: string;
+    type: "success" | "warning" | "info";
+    message: string;
+    detail: string;
+    timestamp: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,8 +79,8 @@ const ContractSchema = new Schema<IContract>(
   {
     title: { type: String, required: true },
     ownerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    status: { 
-      type: String, 
+    status: {
+      type: String,
       enum: ["UPLOADED", "PARSING", "ANALYZING", "READY", "COMPLETE", "FAILED", "RATE_LIMITED", "SEGMENTATION_REVIEW_REQUIRED"],
       default: "UPLOADED"
     },
@@ -99,7 +125,32 @@ const ContractSchema = new Schema<IContract>(
       whatToNegotiateFirst: [{ type: String }],
       whatToNegotiateSecond: [{ type: String }],
       whatCanBeIgnored: [{ type: String }]
-    }
+    },
+    // Phase 6 Fields
+    missingClauses: [{ type: String }],
+    crossClauseConflicts: [{ type: String }],
+    riskEngine: {
+      overallRisk: { type: Number },
+      legalRisk: { type: Number },
+      financialRisk: { type: Number },
+      operationalRisk: { type: Number },
+      complianceRisk: { type: Number },
+      privacyRisk: { type: Number },
+      employmentRisk: { type: Number },
+      intellectualPropertyRisk: { type: Number }
+    },
+    scoreExplanation: [{
+      reason: { type: String },
+      impact: { type: Number },
+      type: { type: String, enum: ["BONUS", "PENALTY"] }
+    }],
+    discoveries: [{
+      id: { type: String },
+      type: { type: String, enum: ["success", "warning", "info"] },
+      message: { type: String },
+      detail: { type: String },
+      timestamp: { type: Date, default: Date.now }
+    }]
   },
   { timestamps: true }
 );

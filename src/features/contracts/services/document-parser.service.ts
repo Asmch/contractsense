@@ -41,8 +41,8 @@ export class DocumentParserService {
     const lowerUrl = fileUrl.toLowerCase();
 
     try {
-      if (lowerUrl.endsWith(".pdf") || lowerUrl.includes("image/upload/v")) {
-        // Assume PDF if it lacks extension but comes from our Cloudinary mock
+      if (lowerUrl.endsWith(".pdf") || lowerUrl.includes("cloudinary.com")) {
+        // Assume PDF if it has .pdf or comes from Cloudinary (since we only accept PDFs right now)
         const pdfData = await pdfParse(buffer);
         text = pdfData.text;
         pageCount = pdfData.numpages || Math.max(1, Math.ceil(text.length / 3000));

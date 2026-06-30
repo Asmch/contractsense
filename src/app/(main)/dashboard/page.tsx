@@ -1,11 +1,98 @@
-import { FileText, ShieldAlert, CheckCircle2, Clock, Upload, BrainCircuit, PenTool, TrendingDown, Target } from "lucide-react";
+import { FileText, Upload } from "lucide-react";
 import Link from "next/link";
 import { connectToDatabase } from "@/database/connection";
 import { ContractModel as Contract } from "@/database/models/Contract";
-import { ContractClauseModel } from "@/database/models/ContractClause";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { DeleteContractButton } from "@/components/dashboard/DeleteContractButton";
+
+// Utility to get contract type from title or filename
+const getContractType = (title: string, fileName?: string) => {
+  const t = (title || fileName || "").toLowerCase();
+  if (t.includes('employment') || t.includes('offer')) return 'Employment Agreement';
+  if (t.includes('nda') || t.includes('non-disclosure') || t.includes('confidentiality')) return 'Freelancer NDA';
+  if (t.includes('freelance') || t.includes('contractor')) return 'Freelance Agreement';
+  if (t.includes('vendor') || t.includes('supplier')) return 'Vendor Contract';
+  if (t.includes('lease') || t.includes('rental')) return 'Lease Agreement';
+  if (t.includes('partnership')) return 'Partnership Agreement';
+  if (t.includes('service')) return 'Service Agreement';
+  
+  // Clean up ugly filenames if we can't find a type
+  if (t.includes('.pdf') || t.includes('.docx')) {
+    return 'Legal Agreement';
+  }
+  
+  return title; // Fallback to title
+};
+
+const getRecommendationDetails = (contract: any) => {
+  if (["UPLOADED", "PARSING", "ANALYZING", "READY"].includes(contract.status)) {
+    return { text: "⏱️ Processing", colorClass: "text-blue-600 bg-blue-50/50", borderClass: "border-blue-200", priority: 5, action: "View Status →" };
+  }
+  if (contract.status === "FAILED") {
+    return { text: "⚠️ Failed", colorClass: "text-red-600 bg-red-50/50", borderClass: "border-red-200", priority: 5, action: "Try Again →" };
+  }
+  
+  if (contract.riskLevel === "CRITICAL") {
+    return { text: "🔴 Lawyer Review Recommended", colorClass: "text-red-700 bg-red-50/50", borderClass: "border-red-200", priority: 1, action: "Review Contract →" };
+  }
+  if (contract.riskLevel === "HIGH") {
+    return { text: "🟠 Needs Changes", colorClass: "text-orange-700 bg-orange-50/50", borderClass: "border-orange-200", priority: 2, action: "Review Contract →" };
+  }
+  if (contract.riskLevel === "MEDIUM") {
+    return { text: "🟡 Review Before Signing", colorClass: "text-amber-700 bg-amber-50/50", borderClass: "border-amber-200", priority: 3, action: "Review Contract →" };
+  }
+  return { text: "🟢 Looks Good", colorClass: "text-emerald-700 bg-emerald-50/50", borderClass: "border-emerald-200", priority: 4, action: "Review Contract →" };
+};
+
+const getReason = (contract: any) => {
+  if (contract.status !== "COMPLETE") {
+    if (contract.status === "FAILED") return "Analysis failed. Please try again.";
+    return "Contract is currently being analyzed.";
+  }
+
+  if (contract.riskLevel === "LOW") {
+    return "No major risks were found. The agreement appears balanced overall.";
+  }
+
+  // Find the biggest penalty for a human readable string
+  if (contract.scoreExplanation && contract.scoreExplanation.length > 0) {
+    const penalties = contract.scoreExplanation.filter((s: any) => s.type === "PENALTY").sort((a: any, b: any) => b.impact - a.impact);
+    if (penalties.length > 0) {
+      const topReason = penalties[0].reason.toLowerCase();
+      // Ensure we don't show API rate limits
+      if (topReason.includes("api rate") || topReason.includes("timeout") || topReason.includes("error")) {
+         return "This agreement contains clauses that may require your attention before signing.";
+      }
+      
+      // Try to make it conversational
+      if (topReason.includes("intellectual property") || topReason.includes("ownership")) {
+        return "This agreement says the company will own everything you create during your work. If that's not what you expected, it's worth discussing before you sign.";
+      }
+      if (topReason.includes("payment")) {
+        return "The payment terms may delay when you receive your money. It's worth reviewing the payment schedule.";
+      }
+      if (topReason.includes("termination")) {
+        return "The other party can end the agreement at any time, which may leave you vulnerable. We recommend reviewing the termination clauses.";
+      }
+      if (topReason.includes("liability")) {
+        return "The agreement may expose you to significant financial risk due to unlimited liability clauses.";
+      }
+      
+      // Fallback
+      return `This agreement contains terms related to ${topReason} that may need clarification before signing.`;
+    }
+  }
+
+  if (contract.keyTakeaways && contract.keyTakeaways.length > 0) {
+    return contract.keyTakeaways[0];
+  }
+
+  if (contract.riskLevel === "CRITICAL" || contract.riskLevel === "HIGH") {
+    return "Some high-risk terms in this agreement need your immediate review.";
+  }
+
+  return "Some clauses should be reviewed before you decide to sign.";
+};
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -16,133 +103,140 @@ export default async function DashboardPage() {
 
   await connectToDatabase();
   
-  const recentContracts = await Contract.find({ ownerId: session.user.id })
-    .sort({ createdAt: -1 })
-    .limit(5)
+  const allContracts = await Contract.find({ ownerId: session.user.id })
     .lean();
-
-  const totalUploaded = await Contract.countDocuments({ ownerId: session.user.id });
-  const completedCount = await Contract.countDocuments({ ownerId: session.user.id, status: "COMPLETE" });
-  const processingCount = await Contract.countDocuments({ ownerId: session.user.id, status: { $in: ["UPLOADED", "PARSING", "ANALYZING", "READY"] } });
-
-  // Calculate Average Safety Score for Completed Contracts
-  const completedContracts = await Contract.find({ ownerId: session.user.id, status: "COMPLETE" }).lean();
-  const totalScore = completedContracts.reduce((sum, c) => sum + (c.safetyScore || 0), 0);
-  const avgSafetyScore = completedContracts.length > 0 ? Math.round(totalScore / completedContracts.length) : 0;
-
-  // Calculate Negotiation & Risk Metrics
-  const allClauses = await ContractClauseModel.find({ 
-    contractId: { $in: completedContracts.map(c => c._id) }
-  }).lean();
+    
+  const enrichedContracts = allContracts.map(c => ({
+    ...c,
+    displayTitle: getContractType(c.title, c.fileName),
+    recommendation: getRecommendationDetails(c),
+    reason: getReason(c)
+  })).sort((a, b) => {
+    if (a.recommendation.priority !== b.recommendation.priority) {
+      return a.recommendation.priority - b.recommendation.priority;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
   
-  const totalRisks = allClauses.filter(c => c.riskLevel === "HIGH" || c.riskLevel === "CRITICAL").length;
-  const rewritesGenerated = allClauses.filter(c => c.suggestedRewrite).length;
-  const highPriorityNegotiations = allClauses.filter(c => c.negotiationPriority === "HIGH" || c.negotiationPriority === "CRITICAL").length;
-  
-  const negotiatedClauses = allClauses.filter(c => typeof c.riskReductionScore === 'number');
-  const totalRiskReduction = negotiatedClauses.reduce((sum, c) => sum + (c.riskReductionScore || 0), 0);
-  const avgRiskReduction = negotiatedClauses.length > 0 ? Math.round(totalRiskReduction / negotiatedClauses.length) : 0;
+  const awaitingAction = enrichedContracts.filter(c => c.recommendation.priority <= 3);
+  const looksGood = enrichedContracts.filter(c => c.recommendation.priority === 4);
+  const processing = enrichedContracts.filter(c => c.recommendation.priority === 5);
 
-  const stats = [
-    { name: "Contracts Analyzed", value: completedCount.toString(), icon: FileText, trend: "AI Processed" },
-    { name: "Avg Safety Score", value: completedCount > 0 ? `${avgSafetyScore}/100` : "-", icon: BrainCircuit, trend: "Overall health" },
-    { name: "High Priority Negotiations", value: highPriorityNegotiations.toString(), icon: Target, trend: "Requires attention" },
-    { name: "Total Risks Found", value: totalRisks.toString(), icon: ShieldAlert, trend: "High & Critical" },
-    { name: "Rewrites Generated", value: rewritesGenerated.toString(), icon: PenTool, trend: "AI suggested" },
-    { name: "Avg Risk Reduction", value: avgRiskReduction > 0 ? `-${avgRiskReduction} pts` : "-", icon: TrendingDown, trend: "Per rewrite" },
-    { name: "Total Risk Reduction", value: totalRiskReduction > 0 ? `-${totalRiskReduction} pts` : "-", icon: TrendingDown, trend: "Cumulative" },
-    { name: "Processing Now", value: processingCount.toString(), icon: Clock, trend: "In pipeline" },
-  ];
+  const pendingCount = awaitingAction.length;
+  const firstName = session.user.name?.split(' ')[0] || 'User';
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-heading font-semibold text-foreground">Welcome back, {session.user.name?.split(' ')[0] || 'User'}</h2>
-        <p className="text-muted-foreground mt-1 text-sm">Here is what is happening with your contracts today.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, i) => (
-          <div key={i} className="glass-panel p-6 rounded-2xl bg-white border border-border/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-secondary/5 flex items-center justify-center text-secondary border border-border/50">
-                <stat.icon className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-3xl font-heading font-semibold text-foreground mb-1">{stat.value}</div>
-            <div className="text-sm font-medium text-muted-foreground mb-3">{stat.name}</div>
-            <div className="text-xs text-secondary font-medium bg-secondary/5 inline-flex px-2 py-1 rounded-md">{stat.trend}</div>
+  const renderCard = (contract: any) => (
+    <div 
+      key={contract._id.toString()} 
+      className="group flex flex-col p-8 bg-white rounded-[24px] border border-slate-200/60 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.08)] transition-all gap-5"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        
+        {/* Left Side: Title & Badge */}
+        <div className="flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-5">
+            <h3 className="text-[22px] font-heading font-semibold text-slate-900 flex items-center gap-2">
+              📄 {contract.displayTitle}
+            </h3>
+            <span className={`inline-flex items-center px-3.5 py-1.5 rounded-lg font-medium text-[13px] border ${contract.recommendation.colorClass} ${contract.recommendation.borderClass}`}>
+              {contract.recommendation.text}
+            </span>
           </div>
-        ))}
+          
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-slate-900">Why we recommend this</p>
+            <p className="text-[15px] leading-relaxed text-slate-600">
+              {contract.reason}
+            </p>
+          </div>
+        </div>
       </div>
-
-      <div className="glass-panel rounded-2xl bg-white border-border/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
-          <h3 className="font-semibold text-foreground">Recent Contracts</h3>
-          <Link href="/contracts" className="text-sm text-primary hover:underline font-medium">View all</Link>
+      
+      {/* Bottom Bar: Metadata & Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-5 mt-2 border-t border-slate-100 gap-4">
+        <div className="text-sm text-slate-500 font-medium flex items-center gap-2">
+          <span>{contract.pageCount || 1} Pages</span>
+          <span className="text-slate-300">•</span>
+          <span>
+            {contract.status === "COMPLETE" ? "Reviewed " : "Added "} 
+            {new Date(contract.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
         </div>
         
-        {recentContracts.length === 0 ? (
-          <div className="p-16 text-center flex flex-col items-center justify-center border-t border-border/50">
-            <div className="w-20 h-20 rounded-2xl bg-secondary/5 flex items-center justify-center mb-6 border border-border/50 shadow-sm relative">
-              <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs shadow-sm">
-                +
-              </div>
-              <FileText className="w-10 h-10 text-muted-foreground/50" />
+        <Link 
+          href={`/contract/${contract._id}`} 
+          className="inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-slate-50 hover:bg-slate-100 text-slate-900 px-6 py-2.5 rounded-xl text-[15px] font-semibold transition-colors border border-slate-200 group-hover:border-slate-300 group-hover:shadow-sm"
+        >
+          {contract.recommendation.action}
+        </Link>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-4xl mx-auto pb-24 pt-8">
+      {/* Hero Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-16 px-2">
+        <div>
+          <h1 className="text-[34px] font-heading font-semibold text-slate-900 tracking-tight mb-2">👋 Welcome back, {firstName}</h1>
+          <p className="text-slate-500 text-[17px]">
+            {pendingCount > 0 
+              ? `You have ${pendingCount} contract${pendingCount > 1 ? 's' : ''} waiting for your review.` 
+              : `You're all caught up. Upload another agreement anytime.`}
+          </p>
+        </div>
+        
+        <Link 
+          href="/contracts/upload" 
+          className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-2xl text-[15px] font-medium hover:bg-primary/90 transition-all shadow-[0_2px_12px_rgba(184,135,70,0.25)] hover:shadow-[0_4px_16px_rgba(184,135,70,0.35)] shrink-0 whitespace-nowrap"
+        >
+          <Upload className="w-[18px] h-[18px]" />
+          Analyze Contract
+        </Link>
+      </div>
+
+      {/* Main Section */}
+      <div>
+        
+        {enrichedContracts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-32 px-4 text-center bg-white rounded-[32px] border border-slate-200/50 shadow-sm">
+            <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+              <FileText className="w-10 h-10 text-slate-300" />
             </div>
-            <h4 className="text-xl font-heading font-medium text-foreground mb-2">No contracts analyzed yet</h4>
-            <p className="text-sm text-muted-foreground mb-8 max-w-sm">
-              Upload your first legal document to extract clauses, detect liabilities, and get a plain-English summary.
-            </p>
-            <div className="flex items-center gap-4">
-              <Link 
-                href="/contracts/upload" 
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm gold-glow"
-              >
-                <Upload className="w-4 h-4" />
-                Upload Contract
-              </Link>
-            </div>
+            <h3 className="text-2xl font-heading font-semibold text-slate-900 mb-2">No contracts yet.</h3>
+            <p className="text-slate-500 mb-8 max-w-sm text-lg">Upload your first agreement to get started.</p>
+            <Link 
+              href="/contracts/upload" 
+              className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-2xl text-[15px] font-medium hover:bg-primary/90 transition-all shadow-[0_2px_12px_rgba(184,135,70,0.25)] hover:shadow-[0_4px_16px_rgba(184,135,70,0.35)]"
+            >
+              <Upload className="w-[18px] h-[18px]" />
+              Analyze Contract
+            </Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-secondary/5 border-b border-border/50">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Document Name</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Date Uploaded</th>
-                  <th className="px-6 py-4 font-medium text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {recentContracts.map((contract: any) => (
-                  <tr key={contract._id.toString()} className="hover:bg-secondary/5 transition-colors">
-                    <td className="px-6 py-4 font-medium text-foreground flex items-center gap-3">
-                      <FileText className="w-4 h-4 text-primary" />
-                      {contract.title}
-                    </td>
-                    <td className="px-6 py-4">
-                      {contract.status === "UPLOADED" && <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase bg-blue-500/10 text-blue-600">Uploaded</span>}
-                      {contract.status === "PARSING" && <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase bg-orange-500/10 text-orange-600 animate-pulse">Parsing</span>}
-                      {contract.status === "ANALYZING" && <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase bg-primary/10 text-primary animate-pulse">Analyzing</span>}
-                      {contract.status === "READY" && <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase bg-emerald-500/10 text-emerald-600">Ready</span>}
-                      {contract.status === "COMPLETE" && <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase bg-emerald-500/10 text-emerald-600">AI Analyzed</span>}
-                      {contract.status === "FAILED" && <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase bg-red-500/10 text-red-600">Failed</span>}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {new Date(contract.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                      <Link href={`/contract/${contract._id}`} className="font-medium text-primary hover:underline">
-                        View
-                      </Link>
-                      <DeleteContractButton contractId={contract._id.toString()} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-16">
+            
+            {/* Awaiting Action Section */}
+            {(awaitingAction.length > 0 || processing.length > 0) && (
+              <div>
+                <h2 className="text-xl font-heading font-semibold text-slate-900 mb-6 px-2 tracking-tight">Contracts Awaiting Action</h2>
+                <div className="space-y-6">
+                  {awaitingAction.map(renderCard)}
+                  {processing.map(renderCard)}
+                </div>
+              </div>
+            )}
+            
+            {/* Looks Good Section */}
+            {looksGood.length > 0 && (
+              <div>
+                <h2 className="text-xl font-heading font-semibold text-slate-900 mb-6 px-2 tracking-tight">No Major Concerns Found</h2>
+                <div className="space-y-6">
+                  {looksGood.map(renderCard)}
+                </div>
+              </div>
+            )}
+            
           </div>
         )}
       </div>

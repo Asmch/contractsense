@@ -124,11 +124,11 @@
   }
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
   html {
     @apply font-sans;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 }
 

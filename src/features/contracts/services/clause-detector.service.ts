@@ -1,52 +1,110 @@
 import { IContractClause } from "@/database/models/ContractClause";
 
-const CLAUSE_CATEGORIES = [
-  "Payment Terms", "Confidentiality", "Intellectual Property", "Liability", 
-  "Indemnification", "Warranty", "Termination", "Governing Law", 
-  "Dispute Resolution", "Force Majeure", "Employment", "Non-Compete", 
-  "Non-Solicitation", "Data Privacy", "Miscellaneous", "Other"
-];
-
-const LEGAL_KEYWORDS = [
-  "payment", "confidentiality", "non-disclosure", "intellectual property",
-  "ownership", "liability", "indemnity", "indemnification", "warranty",
-  "termination", "jurisdiction", "governing law", "arbitration",
-  "dispute resolution", "force majeure", "non-compete", "non-solicitation",
-  "assignment", "limitation of liability"
-];
-
 export class ClauseDetectorService {
   static detectClauses(text: string, contractId: string): Partial<IContractClause>[] {
-    const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p);
+    // Split by paragraphs (double newlines)
+    let paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(p => p);
     
-    let rawClauses: Partial<IContractClause>[] = [];
+    let rawClauses = this.segmentParagraphs(paragraphs, contractId);
+
+    // Validation Gate: Too Few Clauses (Under-segmentation)
+    const totalWords = text.split(/\s+/).length;
+    if (totalWords > 1000 && rawClauses.length < 7) {
+      console.log(`[ClauseDetector] Validation Failed: Found ${rawClauses.length} clauses for ${totalWords} words. Triggering aggressive fallback segmentation.`);
+      
+      const aggressiveParagraphs: string[] = [];
+      const lines = text.split(/\n/);
+      let currentPara = "";
+      
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          if (currentPara) {
+            aggressiveParagraphs.push(currentPara.trim());
+            currentPara = "";
+          }
+          continue;
+        }
+        
+        if (trimmed.length < 80 && !trimmed.endsWith('.') && !trimmed.endsWith(';') && !trimmed.endsWith(',')) {
+          if (currentPara) aggressiveParagraphs.push(currentPara.trim());
+          aggressiveParagraphs.push(trimmed);
+          currentPara = "";
+        } else {
+          currentPara += (currentPara ? " " : "") + trimmed;
+        }
+      }
+      if (currentPara) aggressiveParagraphs.push(currentPara.trim());
+
+      rawClauses = this.segmentParagraphs(aggressiveParagraphs, contractId);
+    }
+
+    // Validation Gate: Too Many Fragments (Over-segmentation)
+    if (rawClauses.length > 30) {
+      const avgLength = rawClauses.reduce((sum, c) => sum + (c.content?.split(/\s+/).length || 0), 0) / rawClauses.length;
+      if (avgLength < 30) {
+        console.log(`[ClauseDetector] Validation Failed: Over-segmented (${rawClauses.length} clauses, avg ${Math.round(avgLength)} words). Merging fragments.`);
+        rawClauses = this.mergeFragments(rawClauses, true);
+      } else {
+        rawClauses = this.mergeFragments(rawClauses, false);
+      }
+    } else {
+      rawClauses = this.mergeFragments(rawClauses, false);
+    }
+
+    // Final fallback
+    if (rawClauses.length === 0) {
+      rawClauses.push({
+         contractId: contractId as any,
+         title: "General Document",
+         content: text || "No text could be extracted from this document.",
+         clauseType: "Other",
+         order: 0,
+         confidenceScore: 40,
+         boundaryConfidence: 20,
+         detectedBy: "STRUCTURAL_ANALYSIS" as any,
+         detectionReason: "Fallback - no boundaries detected"
+      });
+    }
+
+    rawClauses.forEach((c, i) => {
+      c.order = i;
+      if (c.content) c.content = c.content.trim();
+    });
+
+    return rawClauses;
+  }
+
+  private static segmentParagraphs(paragraphs: string[], contractId: string): Partial<IContractClause>[] {
+    const rawClauses: Partial<IContractClause>[] = [];
     let currentClause: Partial<IContractClause> | null = null;
     let order = 0;
-    let currentIndex = 0;
 
     for (const p of paragraphs) {
-      const match = this.evaluateStrategies(p);
+      const match = this.evaluateHierarchy(p);
       
       if (match.isBoundary) {
         if (currentClause && currentClause.content!.trim().length > 0) {
-          currentClause.sourceLocation!.end = currentIndex;
           rawClauses.push(currentClause);
         }
         
-        let cleanTitle = p.replace(/^(\d+\.[\d\.]*\s+|[IVX]+\.\s+|ARTICLE\s+[IVX\d]+\s*[:\-]?\s*)/i, '').trim();
-        if (!cleanTitle || cleanTitle.length > 100) cleanTitle = p.substring(0, 50) + "...";
+        let cleanTitle = p.replace(/^(\d+\.[\d\.]*\s+|[IVX]+\.\s+|ARTICLE\s+[IVX\d]+\s*[:\-]?\s*|\([a-z]\)\s+|SECTION\s+\d+\s*[:\-]?\s*)/i, '').trim();
+        cleanTitle = cleanTitle.replace(/[:\.\-;]+$/, '').trim();
+
+        if (!cleanTitle || cleanTitle.length > 100) cleanTitle = p.substring(0, 60) + "...";
 
         currentClause = {
           contractId: contractId as any,
           title: cleanTitle,
-          content: p,
+          content: p, 
           clauseType: this.categorizeClause(cleanTitle),
           order: order++,
           confidenceScore: match.confidenceScore,
           boundaryConfidence: match.boundaryConfidence,
           detectedBy: match.detectedBy as any,
           detectionReason: match.detectionReason,
-          sourceLocation: { start: currentIndex, end: currentIndex }
+          clauseNumber: match.clauseNumber,
+          hierarchyLevel: match.hierarchyLevel
         };
       } else {
         if (!currentClause) {
@@ -60,133 +118,78 @@ export class ClauseDetectorService {
             boundaryConfidence: 100,
             detectedBy: "STRUCTURAL_ANALYSIS" as any,
             detectionReason: "Beginning of document",
-            sourceLocation: { start: currentIndex, end: currentIndex }
+            hierarchyLevel: 0
           };
         } else {
           currentClause.content += `\n\n${p}`;
         }
       }
-      currentIndex += p.length;
     }
 
     if (currentClause && currentClause.content!.trim().length > 0) {
-      currentClause.sourceLocation!.end = currentIndex;
       rawClauses.push(currentClause);
     }
-
-    // Post-processing: Merge Engine
-    rawClauses = this.mergeSmallClauses(rawClauses);
-
-    // Final fallback
-    if (rawClauses.length === 0) {
-      rawClauses.push({
-         contractId: contractId as any,
-         title: "General Document",
-         content: text || "No text could be extracted from this document.",
-         clauseType: "Other",
-         order: 0,
-         confidenceScore: 40,
-         boundaryConfidence: 20,
-         detectedBy: "STRUCTURAL_ANALYSIS" as any,
-         detectionReason: "Fallback - no boundaries detected",
-         sourceLocation: { start: 0, end: text.length }
-      });
-    }
-
-    // Reorder after merging
-    rawClauses.forEach((c, i) => c.order = i);
-
+    
     return rawClauses;
   }
 
-  private static evaluateStrategies(p: string): 
-    | { isBoundary: true; priority: number; detectedBy: string; confidenceScore: number; boundaryConfidence: number; detectionReason: string }
-    | { isBoundary: false; priority?: undefined; detectedBy?: undefined; confidenceScore?: undefined; boundaryConfidence?: undefined; detectionReason?: undefined } {
-    const strategies = [];
+  private static evaluateHierarchy(p: string) {
+    const text = p.trim();
+    if (!text) return { isBoundary: false };
 
-    // Strategy B: Numbered Section (Priority 1)
-    const numberedRegex = /^(\d+\.\d*\.?\s+)/;
-    if (numberedRegex.test(p) && p.length < 200) {
-      strategies.push({
-        priority: 1,
-        detectedBy: "NUMBERED_SECTION",
-        confidenceScore: 95,
-        boundaryConfidence: 98,
-        detectionReason: `Detected numbered section pattern: ${p.match(numberedRegex)?.[1].trim()}`
-      });
+    const articleRegex = /^(?:ARTICLE|SECTION|CLAUSE|PART)\s+([A-Z0-9IVX]+)[\.:\-\s]*/i;
+    const topNumberRegex = /^(\d+)[\.\-]\s+/;
+    const subNumberRegex = /^(\d+\.\d+(?:\.\d+)?)\.?\s+/;
+    
+    const isAllCaps = /^[^a-z]{3,100}$/.test(text) && !text.includes('\n');
+    
+    const words = text.split(/\s+/);
+    const isShort = text.length > 5 && text.length < 120;
+    const isNotSentence = !text.endsWith('.') && !text.endsWith(';') && !text.includes(' shall ') && !text.includes(' will ');
+    const titleCaseCount = words.filter(w => /^[A-Z]/.test(w)).length;
+    const isTitleCase = isShort && isNotSentence && (titleCaseCount / words.length > 0.6);
+
+    const legalKeywords = /^(Definitions|Confidentiality|Term|Termination|Payment|Fees|Liability|Indemnification|Indemnity|Warranties|Warranty|Intellectual Property|Governing Law|Dispute Resolution|Force Majeure|Miscellaneous|General Provisions|Notices|Severability|Waiver)\b/i;
+    const startsWithKeyword = legalKeywords.test(text);
+    
+    if (articleRegex.test(text) && isShort) {
+       return { isBoundary: true, detectedBy: "ROMAN_NUMERAL", hierarchyLevel: 0, clauseNumber: text.match(articleRegex)?.[1], confidenceScore: 98, boundaryConfidence: 95, detectionReason: "Top level article/section label" };
     }
-
-    // Strategy C: Roman Numeral (Priority 2)
-    const romanRegex = /^(ARTICLE\s+[IVX\d]+\.?|[IVX]+\.)\s+/i;
-    if (romanRegex.test(p) && p.length < 200) {
-      strategies.push({
-        priority: 2,
-        detectedBy: "ROMAN_NUMERAL",
-        confidenceScore: 92,
-        boundaryConfidence: 95,
-        detectionReason: `Detected roman numeral/article pattern: ${p.match(romanRegex)?.[1].trim()}`
-      });
+    if (subNumberRegex.test(text) && isShort) {
+       return { isBoundary: true, detectedBy: "NUMBERED_SECTION", hierarchyLevel: 1, clauseNumber: text.match(subNumberRegex)?.[1], confidenceScore: 92, boundaryConfidence: 85, detectionReason: "Nested numbered section" };
     }
-
-    // Strategy A: Header (Priority 3)
-    const isAllCaps = /^[A-Z\s&,\.\-]+$/.test(p) && p.length > 3;
-    const isTitleCase = /^[A-Z][a-z]+(\s+[A-Z][a-z]+)*$/.test(p) && p.length > 5;
-    if ((isAllCaps || isTitleCase) && p.length < 100) {
-      strategies.push({
-        priority: 3,
-        detectedBy: "HEADER",
-        confidenceScore: isAllCaps ? 88 : 80,
-        boundaryConfidence: 85,
-        detectionReason: `Detected standalone ${isAllCaps ? 'ALL CAPS' : 'Title Case'} header`
-      });
+    if (topNumberRegex.test(text) && isShort) {
+       return { isBoundary: true, detectedBy: "NUMBERED_SECTION", hierarchyLevel: 0, clauseNumber: text.match(topNumberRegex)?.[1], confidenceScore: 95, boundaryConfidence: 90, detectionReason: "Top level numbered section" };
     }
-
-    // Strategy D: Keyword Heuristic (Priority 5)
-    // Only check if it's relatively short (like a subtitle)
-    if (p.length < 80) {
-      const lowerP = p.toLowerCase();
-      const matchedKeyword = LEGAL_KEYWORDS.find(k => lowerP.includes(k));
-      if (matchedKeyword) {
-        strategies.push({
-          priority: 5,
-          detectedBy: "KEYWORD_HEURISTIC",
-          confidenceScore: 70,
-          boundaryConfidence: 60,
-          detectionReason: `Detected legal keyword: '${matchedKeyword}' in short paragraph`
-        });
-      }
+    
+    if (isAllCaps) {
+       return { isBoundary: true, detectedBy: "HEADER", hierarchyLevel: 0, confidenceScore: 85, boundaryConfidence: 80, detectionReason: "ALL CAPS standalone formatting" };
     }
-
-    // Sort by priority (lowest number = highest priority)
-    strategies.sort((a, b) => a.priority - b.priority);
-
-    if (strategies.length > 0) {
-      return { isBoundary: true, ...strategies[0] };
+    
+    if (isTitleCase || (startsWithKeyword && isShort && isNotSentence)) {
+       return { isBoundary: true, detectedBy: "HEADER", hierarchyLevel: 0, confidenceScore: 80, boundaryConfidence: 75, detectionReason: "Title case or legal keyword formatting" };
     }
 
     return { isBoundary: false };
   }
 
-  private static mergeSmallClauses(clauses: Partial<IContractClause>[]): Partial<IContractClause>[] {
+  private static mergeFragments(clauses: Partial<IContractClause>[], aggressive: boolean): Partial<IContractClause>[] {
     const merged: Partial<IContractClause>[] = [];
     
     for (let i = 0; i < clauses.length; i++) {
       const current = clauses[i];
       
-      // If we have a previous clause and current is very small (< 100 chars), AND they share the same strategy/type (or current is a structural split of previous)
       if (merged.length > 0) {
         const prev = merged[merged.length - 1];
         
-        const isSmall = current.content!.length < 100;
-        const sameTopic = current.clauseType === prev.clauseType;
-        const sameStrategy = current.detectedBy === prev.detectedBy;
-
-        // If it's a small fragment that seems related, merge it back
-        if (isSmall && sameTopic && sameStrategy) {
+        const wordCount = current.content!.split(/\s+/).length;
+        
+        const isOrphan = aggressive 
+          ? (wordCount < 40 && prev.hierarchyLevel !== 0 && current.detectedBy !== "ROMAN_NUMERAL")
+          : (wordCount < 15 && !current.clauseNumber && current.detectedBy !== "ROMAN_NUMERAL");
+          
+        if (isOrphan) {
           prev.content += `\n\n${current.content}`;
-          prev.sourceLocation!.end = current.sourceLocation!.end;
-          // Upgrade confidence since we correctly merged a fragmented block
-          prev.boundaryConfidence = Math.min(100, (prev.boundaryConfidence || 80) + 5);
           continue;
         }
       }
@@ -199,21 +202,21 @@ export class ClauseDetectorService {
 
   private static categorizeClause(title: string): IContractClause["clauseType"] {
     const t = title.toLowerCase();
-    if (t.includes("payment") || t.includes("fee") || t.includes("compensation") || t.includes("invoice")) return "Payment Terms";
+    if (t.includes("payment") || t.includes("fee") || t.includes("compensation") || t.includes("invoice") || t.includes("capital")) return "Payment Terms";
     if (t.includes("confidential") || t.includes("non-disclosure") || t.includes("nda")) return "Confidentiality";
-    if (t.includes("intellectual property") || t.includes("ip ") || t.includes("ownership") || t.includes("license")) return "Intellectual Property";
+    if (t.includes("intellectual property") || t.includes("ip ") || t.includes("ownership") || t.includes("license") || t.includes("proprietary")) return "Intellectual Property";
     if (t.includes("liab")) return "Liability";
     if (t.includes("indemni")) return "Indemnification";
-    if (t.includes("warrant")) return "Warranty";
-    if (t.includes("terminat") || t.includes("term")) return "Termination";
-    if (t.includes("governing") || t.includes("jurisdiction")) return "Governing Law";
-    if (t.includes("dispute") || t.includes("arbitration")) return "Dispute Resolution";
+    if (t.includes("warrant") || t.includes("representation")) return "Warranty";
+    if (t.includes("terminat") || t.includes("term ") || t.includes("withdrawal") || t.includes("dissolution")) return "Termination";
+    if (t.includes("governing") || t.includes("jurisdiction") || t.includes("law")) return "Governing Law";
+    if (t.includes("dispute") || t.includes("arbitration") || t.includes("mediation")) return "Dispute Resolution";
     if (t.includes("force majeure")) return "Force Majeure";
-    if (t.includes("employ")) return "Employment";
-    if (t.includes("compete")) return "Non-Compete";
+    if (t.includes("employ") || t.includes("contractor") || t.includes("personnel")) return "Employment";
+    if (t.includes("compete") || t.includes("competition")) return "Non-Compete";
     if (t.includes("solicit")) return "Non-Solicitation";
-    if (t.includes("data") || t.includes("privacy")) return "Data Privacy";
-    if (t.includes("misc") || t.includes("general")) return "Miscellaneous";
+    if (t.includes("data") || t.includes("privacy") || t.includes("security")) return "Data Privacy";
+    if (t.includes("misc") || t.includes("general") || t.includes("entire agreement") || t.includes("severability") || t.includes("waiver")) return "Miscellaneous";
     
     return "Other";
   }

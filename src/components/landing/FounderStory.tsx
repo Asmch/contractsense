@@ -1,11 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { ShieldCheck, Sparkles, FileText, Scale } from "lucide-react";
 
 export function FounderStory() {
   return (
     <section className="py-16 md:py-24 lg:py-32 bg-foreground text-background">
-      <div className="container mx-auto px-6 max-w-4xl">
+      <div className="container mx-auto px-6 max-w-4xl relative">
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -14,35 +15,54 @@ export function FounderStory() {
           className="space-y-8"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-background/20 bg-background/5 text-xs font-semibold tracking-widest uppercase mb-6 text-primary">
-            Why We Built This
+            Why ContractSense Exists
           </div>
           
-          <h2 className="text-4xl md:text-5xl font-heading font-medium leading-tight">
-            Most freelancers and founders sign contracts they <span className="italic text-primary">don't understand</span>.
+          <h2 className="text-4xl md:text-5xl font-heading font-medium leading-tight max-w-3xl">
+            Most founders sign contracts without fully <span className="italic text-primary">understanding</span> what they're agreeing to.
           </h2>
 
-          <div className="space-y-6 text-lg md:text-xl text-background/70 leading-relaxed font-light">
+          <div className="space-y-6 text-lg md:text-xl text-background/70 leading-relaxed font-light max-w-3xl">
             <p>
-              I've seen it happen too many times. You land a big client, they send over a 40-page MSA, and the excitement takes over. You skim it, assume it's "standard," and sign it.
+              Winning a new client is exciting. That's exactly when it's easiest to overlook hidden clauses buried inside a lengthy agreement.
             </p>
             <p>
-              But there is no such thing as standard. One hidden clause can cost you months of unpaid work, strip you of your IP ownership, or expose you to thousands in legal liability.
+              One unfair clause can affect your payments, intellectual property, liability, or even your ability to exit the contract.
             </p>
             <p>
-              Traditional lawyers are too slow and expensive for everyday agreements. So we built ContractSense. We trained an AI on millions of executed contracts to instantly flag what's dangerous, what's missing, and what you should push back on.
+              Traditional legal reviews are expensive and slow. ContractSense uses AI to explain every clause in plain English, uncover hidden risks, recommend safer alternatives, generate negotiation strategies, compare revisions, and answer questions about your contract instantly.
             </p>
-            <p className="font-medium text-background">
-              Because legal clarity shouldn't be a luxury. It should be a right.
+            <p className="font-medium text-background pt-2">
+              Every signature deserves complete understanding—not uncertainty.
             </p>
           </div>
 
-          <div className="pt-8 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-heading font-semibold text-lg">
-              AK
+          {/* Trust Indicators */}
+          <div className="pt-6 pb-12 flex flex-wrap items-center gap-4 text-xs font-medium text-background/60">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-background/5 border border-background/10">
+              <ShieldCheck className="w-4 h-4 text-primary" />
+              <span>Privacy First</span>
             </div>
-            <div>
-              <div className="font-semibold">Alexus K.</div>
-              <div className="text-sm text-background/50">Founder, ContractSense</div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-background/5 border border-background/10">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span>AI-Powered Analysis</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-background/5 border border-background/10">
+              <FileText className="w-4 h-4 text-primary" />
+              <span>Explain Every Clause</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-background/5 border border-background/10">
+              <Scale className="w-4 h-4 text-primary" />
+              <span>Built for Real Contracts</span>
+            </div>
+          </div>
+
+          {/* Developer Credit */}
+          <div className="pt-12 mt-12 border-t border-background/10 flex justify-end text-right">
+            <div className="text-[13px] leading-relaxed text-background/50">
+              <p className="mb-1 uppercase tracking-wider text-[10px] font-bold text-background/30">Designed & Developed by</p>
+              <p className="text-background/80 font-medium text-sm">Asmita Choudhary</p>
+              <p>Developer • AI Engineer</p>
             </div>
           </div>
         </motion.div>

@@ -1,9 +1,11 @@
 import { GeminiProvider } from "../providers/gemini.provider";
 import { 
+  ClauseAnalysisGeminiSchema,
+  ClauseAnalysisZodSchema,
   BatchClauseAnalysisGeminiSchema, 
   ClauseAnalysisResult, 
   getClauseAnalysisSystemInstruction, 
-  getBatchClauseAnalysisPrompt 
+  getBatchClauseAnalysisPrompt
 } from "../prompts/clause-analysis.prompt";
 
 export class ClauseAnalyzer {
@@ -17,8 +19,6 @@ export class ClauseAnalyzer {
     if (clauses.length === 0) return { results: [], tokensUsed: 0 };
 
     // Map the actual Mongo IDs to deterministic index strings (e.g. "idx_0", "idx_1").
-    // This ensures that re-uploading the exact same document generates the EXACT SAME prompt string,
-    // leading to a perfect 100% Cache Hit rate and saving API limits during testing!
     const deterministicClauses = clauses.map((c, index) => ({
       id: `idx_${index}`,
       title: c.title,
@@ -35,8 +35,7 @@ export class ClauseAnalyzer {
     );
 
     // Map the deterministic IDs back to the real Mongo IDs
-    const finalResults = response.data.results.map(res => {
-      // res.clauseId will be "idx_0", "idx_1", etc.
+    const finalResults = response.data.results.map((res: { clauseId: string; analysis: ClauseAnalysisResult }) => {
       const originalIndex = parseInt(res.clauseId.replace("idx_", ""), 10);
       const realClause = clauses[originalIndex];
       return {
@@ -47,6 +46,34 @@ export class ClauseAnalyzer {
 
     return {
       results: finalResults,
+      tokensUsed: response.usage.totalTokens
+    };
+  }
+
+  /**
+   * Analyzes a single critical clause (Adaptive Batching Strategy)
+   */
+  static async analyzeSingleClause(clause: { id: string; title: string; content: string }): Promise<{
+    result: ClauseAnalysisResult;
+    tokensUsed: number;
+  }> {
+    const prompt = `Analyze the following single clause. Return your analysis in the required JSON format.
+    
+    Clause Title: ${clause.title}
+    Clause Content:
+    ${clause.content}
+    `;
+    
+    const systemInstruction = getClauseAnalysisSystemInstruction();
+
+    const response = await GeminiProvider.generateStructuredResponse<ClauseAnalysisResult>(
+      prompt,
+      ClauseAnalysisGeminiSchema,
+      systemInstruction
+    );
+
+    return {
+      result: response.data,
       tokensUsed: response.usage.totalTokens
     };
   }

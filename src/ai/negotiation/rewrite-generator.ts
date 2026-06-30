@@ -1,5 +1,6 @@
 import { Type, Schema } from "@google/genai";
 import { GeminiProvider } from "../providers/gemini.provider";
+import { NEGOTIATION_SYSTEM_PROMPT } from "../prompts/contract-sense-ai-standard";
 
 export interface RewriteGeneratorResult {
   suggestedRewrite: string;
@@ -12,7 +13,7 @@ const RewriteGeneratorGeminiSchema: Schema = {
   properties: {
     suggestedRewrite: { 
       type: Type.STRING,
-      description: "A balanced, realistic revision of the risky clause. Must be plain-english or clear legal language." 
+      description: "A balanced, realistic revision of the risky clause. Use simple English. Make it sound human and fair." 
     },
     acceptanceProbability: { 
       type: Type.NUMBER, 
@@ -20,7 +21,7 @@ const RewriteGeneratorGeminiSchema: Schema = {
     },
     negotiationConfidence: {
       type: Type.NUMBER,
-      description: "AI confidence score (0-100) in the suggested rewrite."
+      description: "Your confidence score (0-100) in this suggested rewrite."
     }
   },
   required: ["suggestedRewrite", "acceptanceProbability", "negotiationConfidence"]
@@ -37,7 +38,7 @@ ${riskExplanation}
 
 Provide a balanced, realistic rewrite of this clause that mitigates the risk while remaining fair to both parties.
 `;
-    const systemInstruction = "You are an expert contract negotiation advisor. Suggest balanced, realistic revisions to risky contract clauses. Avoid extreme positions. Focus on fair risk sharing.";
+    const systemInstruction = NEGOTIATION_SYSTEM_PROMPT;
 
     const response = await GeminiProvider.generateStructuredResponse<RewriteGeneratorResult>(
       prompt,

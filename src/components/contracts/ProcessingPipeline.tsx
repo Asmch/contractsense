@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Circle, AlertCircle, RefreshCw } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, RefreshCw, BrainCircuit, FileText, Search, ShieldAlert, PenTool, FileCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function ProcessingPipeline({ contract }: { contract: any }) {
   const router = useRouter();
@@ -18,7 +19,7 @@ export function ProcessingPipeline({ contract }: { contract: any }) {
       if (match) {
         setRateLimitCountdown(parseInt(match[1]));
       } else {
-        setRateLimitCountdown(60); // fallback
+        setRateLimitCountdown(60);
       }
     }
   }, [status, error]);
@@ -101,134 +102,182 @@ export function ProcessingPipeline({ contract }: { contract: any }) {
   };
 
   const getPipelineSteps = (currentStatus: string) => {
-    // Map intermediate polling states if applicable
     const isDone = (target: string) => currentStatus === "COMPLETE" || currentStatus === "FAILED" || currentStatus === "RATE_LIMITED";
     const isActive = (target: string) => currentStatus === target;
 
     return [
-      { id: "uploaded", label: "Uploaded Document", status: "done" },
-      { id: "extracting", label: "Extracting Text & Layout", status: currentStatus === "UPLOADED" ? "pending" : (isActive("PARSING") ? "active" : "done") },
-      { id: "clauses", label: "Detecting Clauses", status: isActive("ANALYZING") ? "active" : (isDone("COMPLETE") ? "done" : "pending") },
-      { id: "risks", label: "AI Risk Analysis", status: isActive("ANALYZING") ? "active" : (isDone("COMPLETE") ? "done" : "pending") }, 
-      { id: "summary", label: "Generating Summary", status: isActive("ANALYZING") ? "active" : (isDone("COMPLETE") ? "done" : "pending") }, 
-      { id: "report", label: "Building Final Report", status: currentStatus === "COMPLETE" ? "done" : "pending" },
+      { id: "uploaded", label: "Document Uploaded", icon: FileText, status: "done" },
+      { id: "extracting", label: "Reading the Document", icon: Search, status: currentStatus === "UPLOADED" ? "pending" : (isActive("PARSING") ? "active" : "done") },
+      { id: "clauses", label: "Finding Important Rules", icon: FileCheck, status: isActive("ANALYZING") ? "active" : (isDone("COMPLETE") ? "done" : "pending") },
+      { id: "risks", label: "Analyzing Risks", icon: ShieldAlert, status: isActive("ANALYZING") ? "active" : (isDone("COMPLETE") ? "done" : "pending") }, 
+      { id: "negotiation", label: "Building Your Negotiation Plan", icon: PenTool, status: isActive("ANALYZING") ? "active" : (isDone("COMPLETE") ? "done" : "pending") }, 
+      { id: "report", label: "Creating Your Guide", icon: BrainCircuit, status: currentStatus === "COMPLETE" ? "done" : "pending" },
     ];
   };
 
   const steps = getPipelineSteps(status);
 
   return (
-    <div className="w-full lg:w-[400px] glass-panel bg-white border border-border/50 rounded-2xl flex flex-col shrink-0 shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-y-auto">
-      <div className="p-6 border-b border-border/50 flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-heading font-semibold text-foreground">Analysis Status</h3>
-          <p className="text-sm text-muted-foreground mt-1">Real-time pipeline monitoring</p>
+    <div className="w-full h-full flex justify-center pt-6 md:pt-10 relative overflow-y-auto overflow-x-hidden custom-scrollbar bg-white/40 rounded-3xl border border-border/50 shadow-sm backdrop-blur-sm">
+      
+      {/* Background Pulse Animation for Processing State */}
+      {isProcessing && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-10">
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 2, opacity: 0 }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeOut" }}
+            className="w-96 h-96 rounded-full border-[10px] border-primary absolute"
+          />
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 2, opacity: 0 }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeOut", delay: 2 }}
+            className="w-96 h-96 rounded-full border-[10px] border-primary absolute"
+          />
         </div>
-        {status === "FAILED" && (
-          <button 
-            onClick={startProcessing}
-            className="p-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
-            title="Retry Processing"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+      )}
 
-      <div className="p-6 flex-1">
+      <AnimatePresence mode="wait">
         {status === "UPLOADED" ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-              <CheckCircle2 className="w-8 h-8 text-primary" />
+          <motion.div 
+            key="ready"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="flex flex-col items-center justify-start max-w-lg text-center z-10 px-8 pb-8"
+          >
+            <div className="relative mb-6 group">
+              <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:bg-primary/30 transition-all duration-500" />
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-white border border-border/50 rounded-full flex items-center justify-center relative shadow-lg text-primary">
+                <BrainCircuit className="w-10 h-10 md:w-12 md:h-12" />
+              </div>
             </div>
-            <h3 className="text-xl font-heading font-medium text-foreground mb-2">Ready to Analyze</h3>
-            <p className="text-sm text-muted-foreground mb-8 max-w-[250px]">
-              Your document has been uploaded. Click below to begin the AI risk analysis.
+            
+            <h3 className="text-3xl md:text-4xl font-heading font-semibold text-foreground mb-3">Ready to Review</h3>
+            <p className="text-base md:text-lg text-muted-foreground mb-8 leading-relaxed">
+              We'll read through this document, highlight any risks, and tell you exactly what to do next.
             </p>
+            
             <button 
               onClick={startProcessing}
               disabled={isProcessing}
-              className="bg-primary text-primary-foreground px-8 py-3 rounded-xl font-medium hover:bg-primary/90 transition-all shadow-md gold-glow w-full flex items-center justify-center gap-2"
+              className="bg-primary text-primary-foreground px-8 py-3.5 md:px-10 md:py-4 rounded-xl text-lg font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] w-full max-w-sm flex items-center justify-center gap-3 relative overflow-hidden group"
             >
-              {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : "Start Analysis"}
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+              {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : "Start Review"}
             </button>
-          </div>
+          </motion.div>
         ) : status === "RATE_LIMITED" ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
-            <h3 className="text-xl font-heading font-medium text-foreground mb-2">API Rate Limit Hit</h3>
-            <p className="text-sm text-muted-foreground mb-6">
+          <motion.div 
+            key="rate-limited"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center max-w-lg text-center z-10 p-8"
+          >
+            <div className="w-24 h-24 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center justify-center mb-6 text-amber-500">
+              <AlertCircle className="w-12 h-12" />
+            </div>
+            <h3 className="text-3xl font-heading font-semibold text-foreground mb-4">Rate Limit Reached</h3>
+            <p className="text-lg text-muted-foreground mb-8">
               Google Gemini Free Tier limit reached. The process has been safely paused. <br/><br/>
-              <span className="font-semibold text-amber-600">{error}</span>
+              <span className="font-semibold text-amber-600 bg-amber-500/10 px-4 py-2 rounded-lg inline-block">{error}</span>
             </p>
             <button 
               onClick={startProcessing}
               disabled={isProcessing || rateLimitCountdown > 0}
-              className={`px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-sm ${
+              className={`px-8 py-4 rounded-xl text-lg font-medium flex items-center justify-center gap-3 w-full max-w-sm transition-all shadow-sm ${
                 rateLimitCountdown > 0 
                   ? "bg-muted text-muted-foreground cursor-not-allowed" 
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 gold-glow"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(212,175,55,0.4)]"
               }`}
             >
               {isProcessing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-6 h-6 animate-spin" />
               ) : rateLimitCountdown > 0 ? (
-                <><RefreshCw className="w-4 h-4 opacity-50" /> Resuming in {rateLimitCountdown}s...</>
+                <><RefreshCw className="w-5 h-5 opacity-50" /> Resuming in {rateLimitCountdown}s</>
               ) : (
-                <><RefreshCw className="w-4 h-4" /> Resume Analysis</>
+                <><RefreshCw className="w-5 h-5" /> Resume Review</>
               )}
             </button>
-          </div>
+          </motion.div>
         ) : status === "FAILED" ? (
-           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <AlertCircle className="w-12 h-12 text-destructive mb-4" />
-            <h3 className="text-xl font-heading font-medium text-foreground mb-2">Processing Failed</h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              {error || "An error occurred while parsing the document."}
+           <motion.div 
+            key="failed"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center max-w-lg text-center z-10 p-8"
+          >
+            <div className="w-24 h-24 bg-destructive/10 border border-destructive/20 rounded-full flex items-center justify-center mb-6 text-destructive">
+              <AlertCircle className="w-12 h-12" />
+            </div>
+            <h3 className="text-3xl font-heading font-semibold text-foreground mb-4">Processing Failed</h3>
+            <p className="text-lg text-muted-foreground mb-8">
+              {error || "Something went wrong while reading your document. Please try again."}
             </p>
             <button 
               onClick={startProcessing}
               disabled={isProcessing}
-              className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm gold-glow flex items-center gap-2"
+              className="bg-primary text-primary-foreground px-8 py-4 rounded-xl text-lg font-medium hover:bg-primary/90 transition-all shadow-md hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] w-full max-w-sm flex items-center justify-center gap-3"
             >
-              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RefreshCw className="w-4 h-4" /> Retry</>}
+              {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : <><RefreshCw className="w-5 h-5" /> Try Again</>}
             </button>
-          </div>
+          </motion.div>
         ) : (
-          <div className="space-y-8 relative before:absolute before:inset-0 before:ml-8 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-border/50 before:to-transparent">
-            {steps.map((step) => (
-              <div key={step.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                
-                <div className={`flex items-center justify-center w-6 h-6 rounded-full shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm relative z-10 
-                  bg-white border-2 ${step.status === "pending" ? "border-muted-foreground/30" : ""}`}>
-                  {step.status === "done" && (
-                    <CheckCircle2 className="w-6 h-6 text-emerald-500 fill-emerald-500/10 border-none bg-white rounded-full" />
-                  )}
-                  {step.status === "active" && (
-                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                  )}
-                  {step.status === "pending" && (
-                    <Circle className="w-4 h-4 text-transparent" />
-                  )}
-                </div>
+          <motion.div 
+            key="processing"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-3xl z-10 px-4 md:px-8 pb-8"
+          >
+            <div className="text-center mb-6 md:mb-8">
+              <h3 className="text-2xl md:text-3xl font-heading font-semibold text-foreground mb-2">Reading Document</h3>
+              <p className="text-sm md:text-base text-muted-foreground">Please wait while we review your document.</p>
+            </div>
 
-                <div className="w-[calc(100%-3rem)] md:w-[calc(50%-1.5rem)] pl-4 md:pl-0 md:pr-4 md:group-even:pr-0 md:group-even:pl-4">
-                  <h4 className={`text-sm font-medium ${
-                    step.status === "active" ? "text-primary" : 
-                    step.status === "done" ? "text-foreground" : 
-                    "text-muted-foreground"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              {steps.map((step, idx) => (
+                <motion.div 
+                  key={step.id} 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className={`bg-white rounded-2xl p-4 md:p-5 border flex items-center gap-4 md:gap-6 transition-all duration-500 ${
+                    step.status === 'active' 
+                      ? 'border-primary/50 shadow-[0_4px_20px_rgba(212,175,55,0.1)] scale-[1.02]' 
+                      : step.status === 'done' 
+                      ? 'border-border/50 opacity-100' 
+                      : 'border-border/30 opacity-40'
+                  }`}
+                >
+                  <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shrink-0 transition-colors duration-500 ${
+                    step.status === 'done' ? 'bg-green-500/10 text-green-600' : 
+                    step.status === 'active' ? 'bg-primary/10 text-primary' : 
+                    'bg-secondary/10 text-muted-foreground'
                   }`}>
-                    {step.label}
-                  </h4>
-                  {step.status === "active" && (
-                    <p className="text-xs text-muted-foreground mt-1">Processing...</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+                    {step.status === 'done' ? <CheckCircle2 className="w-6 h-6" /> : 
+                     step.status === 'active' ? <Loader2 className="w-6 h-6 animate-spin" /> : 
+                     <step.icon className="w-5 h-5" />}
+                  </div>
+
+                  <div>
+                    <h4 className={`text-base md:text-lg font-semibold ${
+                      step.status === 'active' ? 'text-primary' : 
+                      step.status === 'done' ? 'text-foreground' : 
+                      'text-muted-foreground'
+                    }`}>
+                      {step.label}
+                    </h4>
+                    {step.status === 'active' && (
+                      <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Actively processing...</p>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 }

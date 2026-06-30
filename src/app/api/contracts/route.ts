@@ -32,3 +32,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
+
+export async function GET(req: Request) {
+  try {
+    const session = await auth();
+    
+    // In development/testing, if no session, just return all or a mock user's contracts
+    // For now, let's enforce auth to match POST, but gracefully fallback if needed.
+    const query = session?.user?.id ? { ownerId: session.user.id } : {};
+
+    await connectToDatabase();
+    
+    const contracts = await Contract.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return NextResponse.json({ contracts });
+  } catch (error: any) {
+    console.error("Failed to fetch contracts:", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+  }
+}
+
