@@ -58,10 +58,10 @@ export class Negotiator {
     );
 
     // 4. Set priority based on original risk and type
-    if ((clause.riskScore || 0) >= 80) clause.negotiationPriority = "CRITICAL";
-    else if ((clause.riskScore || 0) >= 60) clause.negotiationPriority = "HIGH";
-    else if ((clause.riskScore || 0) >= 40) clause.negotiationPriority = "MEDIUM";
-    else clause.negotiationPriority = "LOW";
+    if ((clause.riskScore || 0) >= 80) clause.negotiationPriority = "Must Fix";
+    else if ((clause.riskScore || 0) >= 60) clause.negotiationPriority = "Recommended";
+    else if ((clause.riskScore || 0) >= 40) clause.negotiationPriority = "Optional";
+    else clause.negotiationPriority = "None";
 
     if (clause.riskScore && clause.riskScore > 60) {
        clause.negotiationAdvice = "Negotiation is highly recommended due to high risk.";

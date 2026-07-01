@@ -25,10 +25,10 @@ export interface IContractClause extends Document {
   negotiationAdvice?: string;
   suggestedRewrite?: string;
   riskReductionScore?: number;
-  negotiationDifficulty?: "LOW" | "MEDIUM" | "HIGH";
+  negotiationDifficulty?: "Easy" | "Medium" | "Hard";
   marketStandard?: string;
   marketStandardReason?: string;
-  negotiationPriority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  negotiationPriority?: "Must Fix" | "Recommended" | "Optional" | "None";
   negotiationConfidence?: number;
   acceptanceProbability?: number;
   fallbackPosition?: string;
@@ -98,10 +98,10 @@ const ContractClauseSchema = new Schema<IContractClause>(
     negotiationAdvice: { type: String },
     suggestedRewrite: { type: String },
     riskReductionScore: { type: Number },
-    negotiationDifficulty: { type: String, enum: ["LOW", "MEDIUM", "HIGH"] },
+    negotiationDifficulty: { type: String, enum: ["Easy", "Medium", "Hard"] },
     marketStandard: { type: String },
     marketStandardReason: { type: String },
-    negotiationPriority: { type: String, enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+    negotiationPriority: { type: String, enum: ["Must Fix", "Recommended", "Optional", "None"] },
     negotiationConfidence: { type: Number },
     acceptanceProbability: { type: Number },
     fallbackPosition: { type: String },

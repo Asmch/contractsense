@@ -79,8 +79,19 @@ export function ProcessingPipeline({ contract }: { contract: any }) {
       clearInterval(interval);
       
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to process document");
+        let errorMessage = "Failed to process document";
+        try {
+          const text = await res.text();
+          if (text.startsWith('<')) {
+            errorMessage = "Server returned an unexpected response format.";
+          } else {
+            const errorData = JSON.parse(text);
+            errorMessage = errorData.error || errorMessage;
+          }
+        } catch (e) {
+          // Keep default error message
+        }
+        throw new Error(errorMessage);
       }
       
       setStatus("COMPLETE");
