@@ -46,10 +46,7 @@ export function State2Verdict({ contract, clauses, onReviewStart }: State2Verdic
               </li>
             ))}
           </ul>
-          <div className="flex items-center gap-3 text-sm font-bold text-slate-400 border-t border-slate-100 pt-6">
-            <span className="uppercase tracking-widest">Estimated Review Time:</span>
-            <span className="text-slate-900">{time}</span>
-          </div>
+
         </div>
       )}
 

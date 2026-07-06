@@ -26,7 +26,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <main className="min-h-screen relative">
+    <main className="min-h-screen relative overflow-x-hidden">
       <div className="mouse-light" />
       <Navbar />
       

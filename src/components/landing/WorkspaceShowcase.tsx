@@ -59,7 +59,7 @@ export function WorkspaceShowcase() {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 2.5, type: "spring" }}
-          className="absolute -top-6 -right-6 md:top-4 md:-right-12 z-50 bg-white border border-border/50 shadow-xl rounded-xl px-4 py-3 flex items-center gap-3"
+          className="hidden md:flex absolute top-4 -right-12 z-50 bg-white border border-border/50 shadow-xl rounded-xl px-4 py-3 items-center gap-3"
         >
           <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
             <CheckCircle2 className="w-4 h-4 text-success" />
@@ -77,7 +77,7 @@ export function WorkspaceShowcase() {
           transition={{ duration: 0.8 }}
           className="overflow-x-auto pb-8 -mx-4 px-4 sm:mx-0 sm:px-0"
         >
-          <div className="glass-panel rounded-3xl p-6 md:p-8 shadow-2xl grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-w-[1000px] border border-border/50 bg-white/40">
+          <div className="glass-panel rounded-3xl p-6 md:p-8 shadow-2xl grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full xl:min-w-[1000px] border border-border/50 bg-white/40">
             
             {/* Portfolio Safety */}
             <motion.div 

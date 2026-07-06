@@ -25,7 +25,7 @@ export class DocumentParserService {
   /**
    * Downloads a file from a remote URL (Cloudinary) and extracts its text.
    */
-  static async parseFromUrl(fileUrl: string): Promise<ParsedDocument> {
+  static async parseFromUrl(fileUrl: string, originalFilename: string = ""): Promise<ParsedDocument> {
     const response = await fetch(fileUrl);
     
     if (!response.ok) {
@@ -39,29 +39,36 @@ export class DocumentParserService {
     let pageCount = 0;
 
     const lowerUrl = fileUrl.toLowerCase();
+    const lowerFilename = originalFilename.toLowerCase();
 
     try {
-      if (lowerUrl.endsWith(".pdf") || lowerUrl.includes("cloudinary.com")) {
-        // Assume PDF if it has .pdf or comes from Cloudinary (since we only accept PDFs right now)
+      if (lowerFilename.endsWith(".docx") || lowerUrl.endsWith(".docx")) {
+        const docxData = await mammoth.extractRawText({ buffer });
+        text = docxData.value;
+        pageCount = Math.max(1, Math.ceil(text.length / 3000));
+      } else if (lowerFilename.endsWith(".txt") || lowerUrl.endsWith(".txt")) {
+        text = buffer.toString("utf-8");
+        pageCount = Math.max(1, Math.ceil(text.length / 3000));
+      } else if (lowerFilename.endsWith(".pdf") || lowerUrl.endsWith(".pdf") || (lowerUrl.includes("cloudinary.com") && !lowerFilename)) {
+        // Assume PDF if it has .pdf or comes from Cloudinary without a known filename extension
         const pdfData = await pdfParse(buffer);
         text = pdfData.text;
         pageCount = pdfData.numpages || Math.max(1, Math.ceil(text.length / 3000));
-      } else if (lowerUrl.endsWith(".docx")) {
-        const docxData = await mammoth.extractRawText({ buffer });
-        text = docxData.value;
-        // DOCX doesn't have native page counts in mammoth raw extraction, so we estimate
-        pageCount = Math.max(1, Math.ceil(text.length / 3000));
-      } else if (lowerUrl.endsWith(".txt")) {
-        text = buffer.toString("utf-8");
-        pageCount = Math.max(1, Math.ceil(text.length / 3000));
       } else {
-        // Fallback: try parsing as PDF first, then TXT
+        // Fallback: try parsing as PDF first, then DOCX, then TXT
         try {
           const pdfData = await pdfParse(buffer);
           text = pdfData.text;
           pageCount = pdfData.numpages || Math.max(1, Math.ceil(text.length / 3000));
         } catch (e) {
-          throw new Error("Unsupported file format or corrupted file");
+          try {
+            const docxData = await mammoth.extractRawText({ buffer });
+            text = docxData.value;
+            pageCount = Math.max(1, Math.ceil(text.length / 3000));
+          } catch (e2) {
+            text = buffer.toString("utf-8");
+            pageCount = Math.max(1, Math.ceil(text.length / 3000));
+          }
         }
       }
     } catch (error: any) {

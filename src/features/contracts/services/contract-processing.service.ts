@@ -58,7 +58,7 @@ export class ContractProcessingService {
         await contract.save();
 
         // 1. Parse File
-        const { text, pageCount, wordCount } = await DocumentParserService.parseFromUrl(contract.fileUrl);
+        const { text, pageCount, wordCount } = await DocumentParserService.parseFromUrl(contract.fileUrl, contract.title);
 
         contract.rawText = text;
         contract.pageCount = pageCount;

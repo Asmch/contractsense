@@ -31,12 +31,12 @@ export function Navbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className="fixed top-0 inset-x-0 z-50 flex items-center justify-center p-6 pointer-events-none"
+      className="fixed top-0 inset-x-0 z-50 flex items-center justify-center p-4 md:p-6 pointer-events-none"
     >
-      <div className="pointer-events-auto rounded-full px-6 py-3 flex items-center justify-between w-full max-w-5xl bg-white/70 backdrop-blur-2xl border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-300">
-        <Link href="/" className="flex items-center gap-2 text-foreground font-heading font-semibold text-xl tracking-tight group">
+      <div className="pointer-events-auto rounded-full px-4 md:px-6 py-2 md:py-3 flex items-center justify-between w-full max-w-5xl bg-white/70 backdrop-blur-2xl border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] transition-all duration-300">
+        <Link href="/" className="flex items-center gap-2 text-foreground font-heading font-semibold text-lg md:text-xl tracking-tight group">
           <div className="bg-primary/10 p-2 rounded-full text-primary transition-transform duration-300 group-hover:scale-105">
-            <Scale className="w-5 h-5" />
+            <Scale className="w-4 h-4 md:w-5 md:h-5" />
           </div>
           ContractSense
         </Link>
@@ -92,7 +92,7 @@ export function Navbar() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="absolute top-[80px] left-6 right-6 bg-white/95 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-2xl flex flex-col gap-2 pointer-events-auto md:hidden">
+        <div className="absolute top-[72px] md:top-[80px] left-4 right-4 md:left-6 md:right-6 bg-white/95 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-2xl flex flex-col gap-2 pointer-events-auto md:hidden">
           {navItems.map((item) => (
              <Link key={item.path} href={item.path} className="text-foreground font-medium p-3 rounded-xl hover:bg-black/5 transition-colors min-h-[44px]" onClick={() => setIsMobileMenuOpen(false)}>{item.name}</Link>
           ))}

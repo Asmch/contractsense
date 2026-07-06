@@ -58,7 +58,7 @@ export function FeatureLayout({ variant, title, benefits, metric, visual, id }: 
 
   if (variant === "center") {
     return (
-      <section id={id} className="py-24 relative z-10 scroll-mt-32">
+      <section id={id} className="py-16 lg:py-24 relative z-10 scroll-mt-32">
         <div className="container mx-auto px-6 max-w-5xl">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <ScrollReveal animation="slide-up">
@@ -91,7 +91,7 @@ export function FeatureLayout({ variant, title, benefits, metric, visual, id }: 
   }
 
   return (
-    <section id={id} className="py-24 relative z-10 scroll-mt-32">
+    <section id={id} className="py-16 lg:py-24 relative z-10 scroll-mt-32">
       <div className="container mx-auto px-6 max-w-7xl">
         <div className={`flex flex-col gap-12 lg:gap-20 ${variant === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'}`}>
           {/* Mobile: Visuals always come first before text */}

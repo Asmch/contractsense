@@ -86,9 +86,9 @@ export function EnterpriseFooter() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="flex flex-col md:flex-row items-baseline justify-between text-xs text-muted-foreground pt-4 border-t border-black/5"
+          className="flex flex-col md:flex-row items-center md:items-baseline justify-between text-xs text-muted-foreground pt-6 border-t border-black/5"
         >
-          <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4 mb-4 md:mb-0 text-center md:text-left">
+          <div className="flex flex-col md:flex-row items-center md:items-baseline gap-2 md:gap-4 mb-6 md:mb-0 text-center md:text-left">
             <span className="font-semibold text-foreground/80">© {new Date().getFullYear()} ContractSense</span>
             <span>Built by Asmita Choudhary</span>
             <span className="hidden md:inline text-border">|</span>

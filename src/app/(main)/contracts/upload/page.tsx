@@ -26,22 +26,34 @@ export default function UploadContractPage() {
     setIsDragging(false);
 
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type === "application/pdf") {
+    if (droppedFile && (
+      droppedFile.type === "application/pdf" || 
+      droppedFile.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+      droppedFile.type === "text/plain" ||
+      droppedFile.name.toLowerCase().endsWith(".docx") ||
+      droppedFile.name.toLowerCase().endsWith(".txt")
+    )) {
       setFile(droppedFile);
       setError("");
     } else {
-      setError("Please upload a valid PDF file.");
+      setError("Please upload a valid PDF, DOCX, or TXT file.");
     }
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      if (selectedFile.type === "application/pdf") {
+      if (
+        selectedFile.type === "application/pdf" || 
+        selectedFile.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+        selectedFile.type === "text/plain" ||
+        selectedFile.name.toLowerCase().endsWith(".docx") ||
+        selectedFile.name.toLowerCase().endsWith(".txt")
+      ) {
         setFile(selectedFile);
         setError("");
       } else {
-        setError("Please upload a valid PDF file.");
+        setError("Please upload a valid PDF, DOCX, or TXT file.");
       }
     }
   };
@@ -112,7 +124,7 @@ export default function UploadContractPage() {
     <div className="max-w-3xl mx-auto">
       <div>
         <h2 className="text-2xl font-heading font-semibold text-foreground">Upload Contract</h2>
-        <p className="text-muted-foreground mt-1 text-sm">Upload a PDF contract to begin AI analysis.</p>
+        <p className="text-muted-foreground mt-1 text-sm">Upload a PDF, DOCX, or TXT contract to begin AI analysis.</p>
       </div>
 
       <div className="mt-8 glass-panel p-8 rounded-2xl bg-white/50 border-border/50">
@@ -131,11 +143,11 @@ export default function UploadContractPage() {
                 <UploadCloud className="w-8 h-8" />
               </div>
               <h3 className="text-lg font-medium text-foreground mb-2">Drag and drop your contract</h3>
-              <p className="text-sm text-muted-foreground mb-6">Supported formats: PDF (up to 50MB)</p>
+              <p className="text-sm text-muted-foreground mb-6">Supported formats: PDF, DOCX, TXT (up to 50MB)</p>
 
               <label className="cursor-pointer bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm gold-glow">
                 Browse Files
-                <input type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
+                <input type="file" className="hidden" accept=".pdf,.docx,.txt" onChange={handleFileChange} />
               </label>
             </div>
           ) : (

@@ -123,7 +123,7 @@ export function Hero() {
           </div>
 
           {/* Live Demo UI (70%) */}
-          <div className="w-full lg:w-[60%] relative h-[600px] perspective-[2000px]">
+          <div className="w-full lg:w-[60%] relative h-[450px] sm:h-[500px] lg:h-[600px] perspective-[2000px]">
             <motion.div
               style={{ y: y1 }}
               className="absolute inset-0 flex items-center justify-center"
@@ -144,7 +144,7 @@ export function Hero() {
                 </div>
 
                 {/* Contract Body */}
-                <div className="flex gap-8 relative h-full">
+                <div className="flex gap-3 sm:gap-6 lg:gap-8 relative h-full">
 
                   {/* Left Side: Document */}
                   <div className="flex-1 space-y-6">
@@ -183,7 +183,7 @@ export function Hero() {
                   </div>
 
                   {/* Right Side: Sidebar stats or AI Explanation */}
-                  <div className="w-[200px] border-l border-border/50 pl-6 relative overflow-hidden">
+                  <div className="w-[110px] sm:w-[150px] lg:w-[200px] border-l border-border/50 pl-3 lg:pl-6 relative overflow-hidden">
                     <AnimatePresence mode="wait">
                       {demoStep < 3 ? (
                         <motion.div key="stats" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
@@ -234,7 +234,7 @@ export function Hero() {
             </motion.div>
 
             {/* Floating Risk Cards */}
-            <motion.div style={{ y: y2 }} className="absolute top-20 -left-12 z-30">
+            <motion.div style={{ y: y2 }} className="hidden md:block absolute top-20 -left-12 z-30">
               <motion.div
                 animate={{ y: [0, -15, 0] }}
                 transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
@@ -248,7 +248,7 @@ export function Hero() {
               </motion.div>
             </motion.div>
 
-            <motion.div style={{ y: y1 }} className="absolute bottom-32 -right-8 z-30">
+            <motion.div style={{ y: y1 }} className="hidden md:block absolute bottom-32 -right-8 z-30">
               <motion.div
                 animate={{ y: [0, 15, 0] }}
                 transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
