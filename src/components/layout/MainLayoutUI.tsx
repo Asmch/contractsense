@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Scale, LayoutDashboard, FileText, Settings, LogOut, Upload, Sparkles, Menu, X, GitCompare, ArrowLeft } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -14,6 +14,18 @@ interface MainLayoutUIProps {
 export function MainLayoutUI({ children, isDemo = false }: MainLayoutUIProps) {
   const pathname = usePathname();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const navigation = [
     { name: "Home", href: isDemo ? "/demo" : "/dashboard", icon: LayoutDashboard },
@@ -120,8 +132,36 @@ export function MainLayoutUI({ children, isDemo = false }: MainLayoutUIProps) {
               Analyze
             </button> */}
             <div className="h-6 w-px bg-border/50 mx-2" />
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm border border-primary/20">
-              {isDemo ? "DEMO" : "ME"}
+            <div className="relative" ref={profileRef}>
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm border border-primary/20 hover:bg-primary/20 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                {isDemo ? "DM" : "ME"}
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-border/50 rounded-xl shadow-lg py-1 z-50 animate-in fade-in zoom-in duration-200">
+                  <div className="px-4 py-2 border-b border-border/50 mb-1">
+                    <p className="text-sm font-medium text-foreground truncate">My Account</p>
+                  </div>
+                  <Link 
+                    href={isDemo ? "/demo" : "/dashboard"}
+                    className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-secondary/10 transition-colors"
+                    onClick={() => setIsProfileOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  {!isDemo && (
+                    <button 
+                      onClick={() => signOut({ callbackUrl: "/" })}
+                      className="w-full text-left flex items-center px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </header>

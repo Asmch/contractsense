@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Search } from "lucide-react";
+import { Plus, X, Search, Rocket } from "lucide-react";
 import { useState } from "react";
 
 export function SocialProofLogos() {
@@ -21,7 +21,9 @@ export function SocialProofLogos() {
             <span className="text-xl font-bold font-heading text-slate-800 tracking-tight">Agencies</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-b-[20px] border-l-transparent border-r-transparent border-b-slate-800" />
+            <div className="bg-slate-800 p-1 rounded-md text-white">
+              <Rocket className="w-5 h-5" />
+            </div>
             <span className="text-xl font-bold font-heading text-slate-800 tracking-tight">Startups</span>
           </div>
           <div className="flex items-center gap-2">

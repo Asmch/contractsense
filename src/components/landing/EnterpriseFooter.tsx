@@ -89,8 +89,10 @@ export function EnterpriseFooter() {
           className="flex flex-col md:flex-row items-baseline justify-between text-xs text-muted-foreground pt-4 border-t border-black/5"
         >
           <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4 mb-4 md:mb-0 text-center md:text-left">
-            <span className="font-semibold text-foreground/80">© 2026 ContractSense</span>
+            <span className="font-semibold text-foreground/80">© {new Date().getFullYear()} ContractSense</span>
             <span>Built by Asmita Choudhary</span>
+            <span className="hidden md:inline text-border">|</span>
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
           </div>
           
           <div className="flex items-center gap-6">
