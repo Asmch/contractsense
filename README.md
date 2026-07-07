@@ -14,6 +14,8 @@ An AI-powered Contract Intelligence Platform that helps freelancers, startups, a
 
 </div>
 
+Live Link:- https://contractsense-sand.vercel.app/
+
 ---
 
 # 🚀 Overview
